@@ -1,6 +1,9 @@
 #include <iostream>
 #include <string>
 #include <thread>
+#include <mutex>
+#include <fstream>
+#include "class.h"
 
 using namespace std;
 
@@ -13,26 +16,35 @@ void function_1()
 	}
 }
 
-class Functor
+class LogFile
 {
+	std::mutex _mu;
+	ofstream _f;
+
 public:
-	void operator()()
+	LogFile()
 	{
-		for(int i = 0; i < 100; i++)
-		{
-			std::cout << "From Functor: " << i << std::endl;
-		}
+		_f.open("log.txt");
 	}
 
-	void operator()(std::string& msg)
+	~LogFile();
+	void shared_print(std::string msg, int id)
 	{
-		msg = "trust is the mother of deceit";
-		for(int i = 0; i < 3; i++)
-		{
-			std::cout << "From Functor: " << msg << std::endl;
-		}
+		std::lock_guard<mutex> locker(_mu);
+		_f << "From " << id << ": " << msg << endl;
 	}
+
+private:
+
 };
+
+LogFile::LogFile()
+{
+
+}
+
+LogFile::~LogFile()
+{}
 
 int main()
 {
