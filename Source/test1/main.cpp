@@ -63,6 +63,26 @@ private:
 
 };
 
+int factorial_shared_future(std::shared_future<int> sfu)
+{
+    auto num = sfu.get();
+    for (int i = 1; i <= num; i++)
+    {
+        num = num * i;
+    }
+    return num;
+}
+
+int factorial_future(std::future<int>& fu)
+{
+    auto num = fu.get();
+    for (int i = 1; i <= num; i++)
+    {
+        num = num * i;
+    }
+    return num;
+}
+
 int factorial(int num)
 {
 	for (int i = 1; i <= num; i++)
@@ -72,9 +92,13 @@ int factorial(int num)
 	return num;
 }
 
+
+
 int main()
 {
 	Factorial f;
+    bool should_cont = true;
+    
 	/* thread invocation template */
 	std::thread t1(f, 6); //copy of f invoked in new thread
 	std::thread t2(std::ref(f), 6); // ref of f in main thread
@@ -88,24 +112,47 @@ int main()
 
 	/* mutex */
 	std::mutex mu;
+    mu.lock(); // manual lock & unlock is highly discouraged
+    mu.unlock(); // due to possible runtime exception.
+    
 	{
+        // RAII lock guard
 		std::lock_guard<mutex> locker(mu);
 	}
-	std::unique_lock<mutex> ulocker(mu);
+    
+    std::unique_lock<mutex> ul(mu); // locks on initialization.
+    std::unique_lock<mutex> ul2(mu, std::defer_lock); // defer loc
 
 	/* condition variable */
 	std::condition_variable cond;
+    cond.wait(ul, [&]{return should_cont;} ); // must be locked before wait
 
 	/* future and promise */
 	std::promise<int> p;
-	std::future<int> fu = p.get_future();
-
+    std::future<int> fu = p.get_future(); //fu.get() should be called by the async func
+    std::future<int> fu2 = async(std::launch::deferred, factorial_future, std::ref(fu)); // defer launch until get() is called
+    p.set_value(6); // send future to deferred async func
+    //p.set_exception(std::make_exception_ptr(std::runtime_error("Cannot pass argument."))); // set exception when argument cannot be passed
+    fu2.get();
+    
+    std::promise<int> p1;
+    std::future<int> fu_1 = p1.get_future(); //fu.get() should be called by the async func
+    std::shared_future<int> sfu = fu_1.share(); // shared_future can be copied.
+    std::future<int> fu2_1 = async(std::launch::deferred, factorial_shared_future, sfu); // defer launch until get() is called
+    std::future<int> fu2_2 = async(std::launch::deferred, factorial_shared_future, sfu); // defer launch until get() is called
+    p1.set_value(6);
+    fu2_1.get();
+    fu2_2.get();
+    
 	/* async() */
-	std::future<int> fu2 = async(factorial, 6);
+    std::future<int> fu3 = async(factorial, 6);
+    std::future<int> fu4 = async(std::launch::deferred, factorial, 6); // defer launch until get() is called
+    fu3.get();
+    fu4.get(); // call factorial since it's been deferred
 
 	/* packaged task */
 	std::packaged_task<int(int)> t(factorial);
-	std::future<int> fu3 = t.get_future();
+	std::future<int> fu5 = t.get_future();
 	t(6);
 
 
