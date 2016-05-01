@@ -4,6 +4,7 @@
 #include <mutex>
 #include <fstream>
 #include <future>
+#include <regex>
 #include "class.h"
 
 using namespace std;
@@ -194,5 +195,27 @@ int main()
 	t7.join();
 	t8.join();
 
+	string str1;
+
+	/* regex */
+	regex e1("abc.", regex_constants::icase); // abcc abcd, ...
+	regex e2("abc?"); // ab or abc 
+	regex e3("abc*"); // ab, abc, abcc, abccc, ...
+	regex e4("abc+"); // abc, abcc, abccc, ...
+	regex e5("ab[cd]*"); // abddcdcdcddcdcdcdccccdcdd
+	regex e6("ab[^cd]*"); // abwotiwutr
+	regex e7("ab[cd]{3,5}"); // 3 to 5 c's and d's
+	regex e8("abc|de[\]fg]"); // abc or de + and combination of ]fg
+	regex e9("(abc)de+\\1"); // first group
+	regex e10("(ab)c(de+)\\2\\1"); // 2 groups
+	regex e11("[[:w:]]+@[[:w:]]+\\.com"); // email format
+
+
+	while(1)
+	{
+		cin >> str1;
+		bool match = regex_match(str1, e6);
+		cout << (match ? "Matched" : "Not Matched") << endl << endl;
+	}
 	return 0;
 }
